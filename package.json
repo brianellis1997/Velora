@@ -1,0 +1,26 @@
+{
+  "name": "velora",
+  "version": "1.0.0",
+  "private": true,
+  "description": "AI Girlfriend companion service - providing users the girlfriend experience",
+  "scripts": {
+    "dev": "pnpm --filter frontend dev",
+    "build": "pnpm --filter frontend build && pnpm --filter backend build",
+    "deploy:infra": "pnpm --filter backend deploy:infra",
+    "deploy:frontend": "pnpm --filter frontend deploy",
+    "deploy": "pnpm deploy:infra && pnpm deploy:frontend",
+    "test": "pnpm --recursive test",
+    "lint": "pnpm --recursive lint",
+    "clean": "pnpm --recursive clean && rm -rf node_modules"
+  },
+  "keywords": ["ai", "companion", "chat", "serverless", "aws"],
+  "author": "",
+  "license": "Apache-2.0",
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=8.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.3"
+  }
+}

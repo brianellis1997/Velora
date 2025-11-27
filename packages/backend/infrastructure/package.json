@@ -1,0 +1,24 @@
+{
+  "name": "@velora/infrastructure",
+  "version": "1.0.0",
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc -w",
+    "cdk": "cdk",
+    "deploy": "cdk deploy --all",
+    "deploy:infra": "cdk deploy --all",
+    "synth": "cdk synth",
+    "diff": "cdk diff",
+    "destroy": "cdk destroy --all"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "aws-cdk": "^2.115.0",
+    "typescript": "^5.3.3"
+  },
+  "dependencies": {
+    "aws-cdk-lib": "^2.115.0",
+    "constructs": "^10.3.0",
+    "dotenv": "^16.0.0"
+  }
+}
