@@ -15,7 +15,9 @@
       "Bash(test:*)",
       "Bash(cdk bootstrap:*)",
       "Bash(open:*)",
-      "Bash(brew install:*)"
+      "Bash(brew install:*)",
+      "Bash(aws cloudformation describe-stacks:*)",
+      "Bash(cdk deploy:*)"
     ],
     "deny": [],
     "ask": []

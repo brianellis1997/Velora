@@ -41,7 +41,8 @@ export class FunctionStack extends cdk.Stack {
 
     const { tables, userPool } = props;
 
-    const lambdaPath = path.join(__dirname, '../../../src/functions');
+    const backendRoot = path.join(__dirname, '../../..');
+    const lambdaPath = path.join(backendRoot, 'src/functions');
 
     const commonEnvironment = {
       USERS_TABLE: tables.users.tableName,
@@ -54,11 +55,16 @@ export class FunctionStack extends cdk.Stack {
       AWS_NODEJS_CONNECTION_REUSE_ENABLED: '1',
     };
 
+    const sharedPath = path.join(backendRoot, '../shared/src');
+
     const commonBundling = {
       minify: true,
       sourceMap: true,
       target: 'es2022',
       externalModules: ['@aws-sdk/*'],
+      esbuildArgs: {
+        '--alias:@velora/shared': sharedPath,
+      },
     };
 
     const registerFunction = new lambdaNodejs.NodejsFunction(this, 'RegisterFunction', {
