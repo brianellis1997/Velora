@@ -20,7 +20,9 @@
       "Bash(cdk deploy:*)",
       "Bash(aws dynamodb query:*)",
       "Bash(aws dynamodb delete-item:*)",
-      "Bash(aws dynamodb scan:*)"
+      "Bash(aws dynamodb scan:*)",
+      "Bash(lsof:*)",
+      "Bash(xargs kill -9)"
     ],
     "deny": [],
     "ask": []

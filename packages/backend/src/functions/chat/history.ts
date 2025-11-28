@@ -4,6 +4,7 @@ import { ConversationRepository } from '../../lib/dynamodb/repositories/Conversa
 import { successResponse, errorResponse } from '../../lib/utils/response';
 import { Logger } from '../../lib/utils/logger';
 import { UnauthorizedError, NotFoundError, getErrorStatusCode } from '../../lib/utils/errors';
+import { getUserIdFromEvent } from '../../lib/utils/auth';
 
 const logger = new Logger('GetMessagesFunction');
 const messageRepo = new MessageRepository();
@@ -13,11 +14,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
   try {
     logger.info('Get messages request received');
 
-    const userId = event.requestContext.authorizer?.jwt?.claims?.sub;
-
-    if (!userId) {
-      throw new UnauthorizedError('User not authenticated');
-    }
+    const userId = await getUserIdFromEvent(event);
 
     const conversationId = event.pathParameters?.conversationId;
 

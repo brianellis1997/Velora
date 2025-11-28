@@ -36,6 +36,12 @@ export class DatabaseStack extends cdk.Stack {
       projectionType: dynamodb.ProjectionType.ALL,
     });
 
+    usersTable.addGlobalSecondaryIndex({
+      indexName: 'GSI3',
+      partitionKey: { name: 'cognitoId', type: dynamodb.AttributeType.STRING },
+      projectionType: dynamodb.ProjectionType.ALL,
+    });
+
     const charactersTable = new dynamodb.Table(this, 'CharactersTable', {
       tableName: 'velora-characters',
       partitionKey: { name: 'PK', type: dynamodb.AttributeType.STRING },

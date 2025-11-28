@@ -5,6 +5,7 @@ import { successResponse, errorResponse } from '../../lib/utils/response';
 import { Logger } from '../../lib/utils/logger';
 import { ValidationError, UnauthorizedError, getErrorStatusCode } from '../../lib/utils/errors';
 import { CreateCharacterInputSchema } from '@velora/shared';
+import { getUserIdFromEvent } from '../../lib/utils/auth';
 
 const logger = new Logger('CreateCharacterFunction');
 const characterRepo = new CharacterRepository();
@@ -13,11 +14,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
   try {
     logger.info('Create character request received');
 
-    const userId = event.requestContext.authorizer?.jwt?.claims?.sub;
-
-    if (!userId) {
-      throw new UnauthorizedError('User not authenticated');
-    }
+    const userId = await getUserIdFromEvent(event);
 
     const body = JSON.parse(event.body || '{}');
     const validatedInput = CreateCharacterInputSchema.parse(body);

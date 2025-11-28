@@ -27,6 +27,7 @@ export default function ChatPage() {
 
   const wsRef = useRef<WebSocket | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const streamingContentRef = useRef<string>('');
 
   const {
     isRecording,
@@ -66,58 +67,74 @@ export default function ChatPage() {
     }
   };
 
-  const connectWebSocket = () => {
-    const ws = new WebSocket(WS_URL);
+  const connectWebSocket = (): Promise<WebSocket> => {
+    return new Promise((resolve, reject) => {
+      const ws = new WebSocket(WS_URL);
 
-    ws.onopen = () => {
-      console.log('WebSocket connected');
-    };
+      ws.onopen = () => {
+        console.log('WebSocket connected to:', WS_URL);
+        resolve(ws);
+      };
 
-    ws.onmessage = (event) => {
-      const data = JSON.parse(event.data);
+      ws.onmessage = (event) => {
+        console.log('WebSocket message received:', event.data);
+        const data = JSON.parse(event.data);
 
-      if (data.type === 'token') {
-        setStreamingMessage((prev) => prev + data.content);
-      } else if (data.type === 'done') {
-        setMessages((prev) => [
-          ...prev,
-          {
-            messageId: data.messageId,
-            conversationId: conversationId!,
-            role: 'assistant',
-            content: streamingMessage,
-            timestamp: new Date().toISOString(),
-          } as Message,
-        ]);
-        setStreamingMessage('');
+        if (data.type === 'token') {
+          streamingContentRef.current += data.content;
+          setStreamingMessage(streamingContentRef.current);
+        } else if (data.type === 'done') {
+          const finalContent = streamingContentRef.current;
+          setMessages((prev) => [
+            ...prev,
+            {
+              messageId: data.messageId,
+              conversationId: conversationId!,
+              role: 'assistant',
+              content: finalContent,
+              timestamp: new Date().toISOString(),
+            } as Message,
+          ]);
+          setStreamingMessage('');
+          streamingContentRef.current = '';
+          setSending(false);
+        } else if (data.type === 'error') {
+          console.error('Chat error:', data.error);
+          setSending(false);
+          setStreamingMessage('');
+          streamingContentRef.current = '';
+        }
+      };
+
+      ws.onerror = (error) => {
+        console.error('WebSocket error:', error);
         setSending(false);
-      } else if (data.type === 'error') {
-        console.error('Chat error:', data.error);
-        setSending(false);
-        setStreamingMessage('');
-      }
-    };
+        reject(error);
+      };
 
-    ws.onerror = (error) => {
-      console.error('WebSocket error:', error);
-      setSending(false);
-    };
+      ws.onclose = (event) => {
+        console.log('WebSocket disconnected:', event.code, event.reason);
+      };
 
-    ws.onclose = () => {
-      console.log('WebSocket disconnected');
-    };
+      wsRef.current = ws;
 
-    wsRef.current = ws;
+      setTimeout(() => {
+        if (ws.readyState !== WebSocket.OPEN) {
+          reject(new Error('WebSocket connection timeout'));
+        }
+      }, 5000);
+    });
   };
 
   const sendMessage = async () => {
     if (!inputValue.trim() || !conversationId || !user) return;
 
+    const messageContent = inputValue;
     const userMessage: Message = {
       messageId: Math.random().toString(),
       conversationId,
       role: 'user',
-      content: inputValue,
+      content: messageContent,
       timestamp: new Date().toISOString(),
     };
 
@@ -125,18 +142,24 @@ export default function ChatPage() {
     setInputValue('');
     setSending(true);
 
-    if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
-      connectWebSocket();
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-    }
+    try {
+      if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
+        console.log('Establishing WebSocket connection...');
+        await connectWebSocket();
+      }
 
-    wsRef.current?.send(
-      JSON.stringify({
+      const payload = {
         conversationId,
-        content: inputValue,
+        content: messageContent,
         userId: user.userId,
-      })
-    );
+      };
+
+      console.log('Sending WebSocket message:', payload);
+      wsRef.current?.send(JSON.stringify(payload));
+    } catch (error) {
+      console.error('Failed to send message:', error);
+      setSending(false);
+    }
   };
 
   useEffect(() => {

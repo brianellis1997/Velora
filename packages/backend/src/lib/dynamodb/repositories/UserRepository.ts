@@ -59,7 +59,7 @@ export class UserRepository {
     const result = await docClient.send(
       new QueryCommand({
         TableName: TABLE_NAMES.USERS,
-        IndexName: 'GSI1',
+        IndexName: 'GSI3',
         KeyConditionExpression: 'cognitoId = :cognitoId',
         ExpressionAttributeValues: {
           ':cognitoId': cognitoId,
