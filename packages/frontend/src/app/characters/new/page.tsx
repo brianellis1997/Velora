@@ -7,6 +7,8 @@ import { createCharacter, updateCharacter } from '@/lib/api/characters';
 import { transcribeAudio } from '@/lib/api/chat';
 import { listVoices, Voice } from '@/lib/api/tts';
 import { useAudioRecorder } from '@/lib/hooks/useAudioRecorder';
+import { Character } from '@velora/shared';
+import { Avatar } from '@/components/Avatar';
 
 export default function NewCharacterPage() {
   const router = useRouter();
@@ -17,7 +19,7 @@ export default function NewCharacterPage() {
   const [transcribing, setTranscribing] = useState(false);
 
   const [showVoiceModal, setShowVoiceModal] = useState(false);
-  const [createdCharacterId, setCreatedCharacterId] = useState<string | null>(null);
+  const [createdCharacter, setCreatedCharacter] = useState<Character | null>(null);
   const [suggestedVoice, setSuggestedVoice] = useState<{
     voiceId: string;
     voiceName: string;
@@ -78,8 +80,9 @@ export default function NewCharacterPage() {
 
     try {
       const response = await createCharacter({ prompt }, accessToken);
-      const characterId = response.character.characterId;
-      setCreatedCharacterId(characterId);
+      console.log('Created character:', response.character);
+      console.log('Avatar URL:', response.character.avatar);
+      setCreatedCharacter(response.character);
 
       setLoadingVoice(true);
 
@@ -97,7 +100,7 @@ export default function NewCharacterPage() {
   };
 
   const handleSaveVoice = async () => {
-    if (!createdCharacterId || !accessToken || !selectedVoiceId) return;
+    if (!createdCharacter || !accessToken || !selectedVoiceId) return;
 
     setLoadingVoice(true);
     try {
@@ -105,7 +108,7 @@ export default function NewCharacterPage() {
       if (!selectedVoice) return;
 
       await updateCharacter(
-        createdCharacterId,
+        createdCharacter.characterId,
         {
           voiceConfig: {
             provider: 'elevenlabs',
@@ -117,7 +120,7 @@ export default function NewCharacterPage() {
         accessToken
       );
 
-      router.push(`/chat?characterId=${createdCharacterId}`);
+      router.push(`/chat?characterId=${createdCharacter.characterId}`);
     } catch (err: any) {
       setError(err.message || 'Failed to save voice');
     } finally {
@@ -126,8 +129,8 @@ export default function NewCharacterPage() {
   };
 
   const handleSkipVoice = () => {
-    if (createdCharacterId) {
-      router.push(`/chat?characterId=${createdCharacterId}`);
+    if (createdCharacter) {
+      router.push(`/chat?characterId=${createdCharacter.characterId}`);
     }
   };
 
@@ -224,11 +227,23 @@ export default function NewCharacterPage() {
         </div>
       </div>
 
-      {showVoiceModal && (
+      {showVoiceModal && createdCharacter && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6">
-              <h3 className="text-2xl font-bold mb-4">Choose a Voice</h3>
+              <div className="flex flex-col items-center mb-6">
+                <Avatar
+                  src={createdCharacter.avatar}
+                  alt={createdCharacter.name}
+                  size="xl"
+                  fallback={createdCharacter.name[0]}
+                  className="mb-4"
+                />
+                <h3 className="text-2xl font-bold">{createdCharacter.name}</h3>
+                <p className="text-gray-600">{createdCharacter.personalityTraits.tone}</p>
+              </div>
+
+              <h4 className="text-xl font-semibold mb-4">Choose a Voice</h4>
 
               {loadingVoice ? (
                 <div className="text-center py-8">

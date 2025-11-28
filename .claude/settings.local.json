@@ -24,7 +24,8 @@
       "Bash(lsof:*)",
       "Bash(xargs kill -9)",
       "Bash(npx cdk deploy:*)",
-      "Bash(node test-lambda.js:*)"
+      "Bash(node test-lambda.js:*)",
+      "Bash(/usr/local/bin/aws logs tail:*)"
     ],
     "deny": [],
     "ask": []

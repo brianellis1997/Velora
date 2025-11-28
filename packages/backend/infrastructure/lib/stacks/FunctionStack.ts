@@ -4,6 +4,7 @@ import * as lambdaNodejs from 'aws-cdk-lib/aws-lambda-nodejs';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as cognito from 'aws-cdk-lib/aws-cognito';
 import * as iam from 'aws-cdk-lib/aws-iam';
+import * as s3 from 'aws-cdk-lib/aws-s3';
 import { Construct } from 'constructs';
 import * as path from 'path';
 
@@ -17,6 +18,7 @@ interface FunctionStackProps extends cdk.StackProps {
   };
   userPool: cognito.UserPool;
   userPoolClient: cognito.UserPoolClient;
+  characterAssetsBucket: s3.Bucket;
 }
 
 export class FunctionStack extends cdk.Stack {
@@ -46,7 +48,7 @@ export class FunctionStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props: FunctionStackProps) {
     super(scope, id, props);
 
-    const { tables, userPool, userPoolClient } = props;
+    const { tables, userPool, userPoolClient, characterAssetsBucket } = props;
 
     const backendRoot = path.join(__dirname, '../../..');
     const lambdaPath = path.join(backendRoot, 'src/functions');
@@ -63,6 +65,7 @@ export class FunctionStack extends cdk.Stack {
       ELEVENLABS_API_KEY_SECRET_NAME: 'velora/elevenlabs-api-key',
       OPENAI_API_KEY_SECRET_NAME: 'velora/openai-api-key',
       XAI_API_KEY_SECRET_NAME: 'velora/xai-api-key',
+      CHARACTER_ASSETS_BUCKET: characterAssetsBucket.bucketName,
       AWS_NODEJS_CONNECTION_REUSE_ENABLED: '1',
     };
 
@@ -138,7 +141,7 @@ export class FunctionStack extends cdk.Stack {
       handler: 'handler',
       entry: path.join(lambdaPath, 'characters/create.ts'),
       functionName: 'velora-create-character',
-      timeout: cdk.Duration.seconds(30),
+      timeout: cdk.Duration.seconds(60),
       memorySize: 1024,
       environment: commonEnvironment,
       bundling: commonBundling,
@@ -364,6 +367,14 @@ export class FunctionStack extends cdk.Stack {
         resources: [`arn:aws:execute-api:${this.region}:${this.account}:*`],
       })
     );
+
+    [createCharacterFunction, updateCharacterFunction, deleteCharacterFunction].forEach(fn => {
+      characterAssetsBucket.grantReadWrite(fn);
+    });
+
+    [listCharactersFunction, getCharacterFunction].forEach(fn => {
+      characterAssetsBucket.grantRead(fn);
+    });
 
     this.functions = {
       register: registerFunction,

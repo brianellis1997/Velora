@@ -21,6 +21,7 @@ export class CharacterRepository {
       systemPrompt: data.systemPrompt,
       personalityTraits: data.personalityTraits,
       avatar: data.avatar,
+      voiceConfig: undefined,
       isPublic: false,
       usageCount: 0,
       createdAt: now,

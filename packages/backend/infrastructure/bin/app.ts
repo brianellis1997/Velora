@@ -5,6 +5,7 @@ import * as path from 'path';
 import * as cdk from 'aws-cdk-lib';
 import { DatabaseStack } from '../lib/stacks/DatabaseStack';
 import { AuthStack } from '../lib/stacks/AuthStack';
+import { StorageStack } from '../lib/stacks/StorageStack';
 import { ApiStack } from '../lib/stacks/ApiStack';
 import { FunctionStack } from '../lib/stacks/FunctionStack';
 
@@ -27,12 +28,18 @@ const authStack = new AuthStack(app, 'VeloraAuthStack', {
   description: 'Velora Authentication Stack - Cognito User Pool',
 });
 
+const storageStack = new StorageStack(app, 'VeloraStorageStack', {
+  env,
+  description: 'Velora Storage Stack - S3 buckets for character assets',
+});
+
 const functionStack = new FunctionStack(app, 'VeloraFunctionStack', {
   env,
   description: 'Velora Function Stack - Lambda functions',
   tables: databaseStack.tables,
   userPool: authStack.userPool,
   userPoolClient: authStack.userPoolClient,
+  characterAssetsBucket: storageStack.characterAssetsBucket,
 });
 
 const apiStack = new ApiStack(app, 'VeloraApiStack', {

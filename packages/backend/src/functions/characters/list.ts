@@ -1,5 +1,6 @@
 import { APIGatewayProxyHandler } from 'aws-lambda';
 import { CharacterRepository } from '../../lib/dynamodb/repositories/CharacterRepository';
+import { getPresignedImageUrl } from '../../lib/s3/imageStorage';
 import { successResponse, errorResponse } from '../../lib/utils/response';
 import { Logger } from '../../lib/utils/logger';
 import { UnauthorizedError, getErrorStatusCode } from '../../lib/utils/errors';
@@ -19,6 +20,17 @@ export const handler: APIGatewayProxyHandler = async (event) => {
       : 50;
 
     const characters = await characterRepo.listByUserId(userId, limit);
+
+    for (const character of characters) {
+      if (character.avatar) {
+        try {
+          character.avatar = await getPresignedImageUrl(character.characterId);
+        } catch (error) {
+          logger.warn('Failed to refresh avatar URL', { characterId: character.characterId });
+          character.avatar = undefined;
+        }
+      }
+    }
 
     logger.info('Characters listed successfully', {
       userId,

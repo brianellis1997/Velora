@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useAuthStore } from '@/lib/store/authStore';
 import { listCharacters, deleteCharacter } from '@/lib/api/characters';
 import { Character } from '@velora/shared';
+import { Avatar } from '@/components/Avatar';
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -115,6 +116,14 @@ export default function DashboardPage() {
                 key={character.characterId}
                 className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition"
               >
+                <div className="flex flex-col items-center mb-4">
+                  <Avatar
+                    src={character.avatar}
+                    alt={character.name}
+                    size="lg"
+                    fallback={character.name[0]}
+                  />
+                </div>
                 <h3 className="text-xl font-bold mb-2">{character.name}</h3>
                 <p className="text-gray-600 mb-2">
                   {character.personalityTraits.tone}

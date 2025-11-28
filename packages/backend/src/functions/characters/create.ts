@@ -1,6 +1,9 @@
 import { APIGatewayProxyHandler } from 'aws-lambda';
+import { v4 as uuidv4 } from 'uuid';
 import { CharacterRepository } from '../../lib/dynamodb/repositories/CharacterRepository';
 import { generateCharacterFromPrompt } from '../../lib/groq/client';
+import { generateCharacterImage } from '../../lib/images/xaiImageClient';
+import { uploadCharacterImage, getPresignedImageUrl } from '../../lib/s3/imageStorage';
 import { successResponse, errorResponse } from '../../lib/utils/response';
 import { Logger } from '../../lib/utils/logger';
 import { ValidationError, UnauthorizedError, getErrorStatusCode } from '../../lib/utils/errors';
@@ -20,19 +23,20 @@ export const handler: APIGatewayProxyHandler = async (event) => {
     const validatedInput = CreateCharacterInputSchema.parse(body);
 
     let characterData;
+    let generatedProfile = null;
 
     if (validatedInput.prompt) {
       logger.info('Generating character from prompt', { prompt: validatedInput.prompt });
-      const generated = await generateCharacterFromPrompt(validatedInput.prompt);
+      generatedProfile = await generateCharacterFromPrompt(validatedInput.prompt);
 
       characterData = {
-        name: validatedInput.name || generated.name,
-        systemPrompt: generated.systemPrompt,
+        name: validatedInput.name || generatedProfile.name,
+        systemPrompt: generatedProfile.systemPrompt,
         personalityTraits: {
-          tone: generated.tone,
-          interests: generated.interests,
-          background: generated.background,
-          speakingStyle: generated.speakingStyle,
+          tone: generatedProfile.tone,
+          interests: generatedProfile.interests,
+          background: generatedProfile.background,
+          speakingStyle: generatedProfile.speakingStyle,
         },
       };
     } else if (validatedInput.personalityTraits) {
@@ -65,6 +69,38 @@ Instructions:
     });
 
     logger.info('Character created successfully', { characterId: character.characterId });
+
+    if (generatedProfile) {
+      try {
+        logger.info('Starting image generation process');
+        const imageBuffer = await generateCharacterImage(generatedProfile);
+        logger.info('Image buffer generated', { sizeBytes: imageBuffer.length });
+
+        logger.info('Uploading image to S3');
+        await uploadCharacterImage(character.characterId, imageBuffer);
+        logger.info('Image uploaded successfully');
+
+        logger.info('Generating presigned URL');
+        const avatarUrl = await getPresignedImageUrl(character.characterId);
+        logger.info('Presigned URL generated', { avatarUrl });
+
+        character.avatar = avatarUrl;
+
+        logger.info('Updating character with avatar URL');
+        await characterRepo.update(userId, character.characterId, { avatar: avatarUrl });
+
+        logger.info('Image generated and uploaded successfully', {
+          characterId: character.characterId,
+          avatarUrl
+        });
+      } catch (imageError: any) {
+        logger.error('Failed to generate image, continuing without avatar', {
+          error: imageError.message,
+          stack: imageError.stack,
+          characterId: character.characterId,
+        });
+      }
+    }
 
     return successResponse({ character }, 201);
   } catch (error: any) {

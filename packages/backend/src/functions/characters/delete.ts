@@ -1,5 +1,6 @@
 import { APIGatewayProxyHandler } from 'aws-lambda';
 import { CharacterRepository } from '../../lib/dynamodb/repositories/CharacterRepository';
+import { deleteCharacterImages } from '../../lib/s3/imageStorage';
 import { successResponse, errorResponse } from '../../lib/utils/response';
 import { Logger } from '../../lib/utils/logger';
 import { UnauthorizedError, NotFoundError, getErrorStatusCode } from '../../lib/utils/errors';
@@ -21,6 +22,13 @@ export const handler: APIGatewayProxyHandler = async (event) => {
     }
 
     await characterRepo.delete(userId, characterId);
+
+    try {
+      await deleteCharacterImages(characterId);
+      logger.info('Character images deleted from S3');
+    } catch (error) {
+      logger.warn('Failed to delete images from S3', error);
+    }
 
     logger.info('Character deleted successfully', { characterId });
 
