@@ -60,6 +60,8 @@ export class FunctionStack extends cdk.Stack {
       USER_POOL_ID: userPool.userPoolId,
       COGNITO_CLIENT_ID: userPoolClient.userPoolClientId,
       GROQ_API_KEY_SECRET_NAME: 'velora/groq-api-key',
+      ELEVENLABS_API_KEY_SECRET_NAME: 'velora/elevenlabs-api-key',
+      OPENAI_API_KEY_SECRET_NAME: 'velora/openai-api-key',
       AWS_NODEJS_CONNECTION_REUSE_ENABLED: '1',
     };
 
@@ -343,7 +345,10 @@ export class FunctionStack extends cdk.Stack {
         new iam.PolicyStatement({
           effect: iam.Effect.ALLOW,
           actions: ['secretsmanager:GetSecretValue'],
-          resources: [`arn:aws:secretsmanager:${this.region}:${this.account}:secret:velora/elevenlabs-api-key-*`],
+          resources: [
+            `arn:aws:secretsmanager:${this.region}:${this.account}:secret:velora/elevenlabs-api-key-*`,
+            `arn:aws:secretsmanager:${this.region}:${this.account}:secret:velora/openai-api-key-*`
+          ],
         })
       );
     });

@@ -8,6 +8,7 @@ export class AuthStack extends cdk.Stack {
   public readonly userPoolClient: cognito.UserPoolClient;
   public readonly groqApiKeySecret: secretsmanager.Secret;
   public readonly elevenlabsApiKeySecret: secretsmanager.Secret;
+  public readonly openaiApiKeySecret: secretsmanager.Secret;
 
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
@@ -88,6 +89,16 @@ export class AuthStack extends cdk.Stack {
       secretStringValue: cdk.SecretValue.unsafePlainText(process.env.ELEVENLABS_API_KEY),
     });
 
+    if (!process.env.OPENAI_API_KEY) {
+      throw new Error('OPENAI_API_KEY environment variable is required');
+    }
+
+    this.openaiApiKeySecret = new secretsmanager.Secret(this, 'OpenAIApiKeySecret', {
+      secretName: 'velora/openai-api-key',
+      description: 'OpenAI API key for Velora TTS voice synthesis',
+      secretStringValue: cdk.SecretValue.unsafePlainText(process.env.OPENAI_API_KEY),
+    });
+
     new cdk.CfnOutput(this, 'UserPoolId', {
       value: this.userPool.userPoolId,
       exportName: 'VeloraUserPoolId',
@@ -106,6 +117,11 @@ export class AuthStack extends cdk.Stack {
     new cdk.CfnOutput(this, 'ElevenlabsApiKeySecretArn', {
       value: this.elevenlabsApiKeySecret.secretArn,
       exportName: 'VeloraElevenlabsApiKeySecretArn',
+    });
+
+    new cdk.CfnOutput(this, 'OpenAIApiKeySecretArn', {
+      value: this.openaiApiKeySecret.secretArn,
+      exportName: 'VeloraOpenAIApiKeySecretArn',
     });
   }
 }

@@ -23,7 +23,8 @@
       "Bash(aws dynamodb scan:*)",
       "Bash(lsof:*)",
       "Bash(xargs kill -9)",
-      "Bash(npx cdk deploy:*)"
+      "Bash(npx cdk deploy:*)",
+      "Bash(node test-lambda.js:*)"
     ],
     "deny": [],
     "ask": []

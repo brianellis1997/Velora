@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/lib/store/authStore';
 import { createCharacter, updateCharacter } from '@/lib/api/characters';
 import { transcribeAudio } from '@/lib/api/chat';
-import { listVoices, suggestVoice, Voice } from '@/lib/api/tts';
+import { listVoices, Voice } from '@/lib/api/tts';
 import { useAudioRecorder } from '@/lib/hooks/useAudioRecorder';
 
 export default function NewCharacterPage() {
@@ -86,27 +86,6 @@ export default function NewCharacterPage() {
       const voicesResponse = await listVoices(accessToken);
       setAvailableVoices(voicesResponse.voices);
 
-      let suggestion = null;
-      let retries = 5;
-      let delay = 2000;
-      while (retries > 0) {
-        try {
-          suggestion = await suggestVoice(characterId, accessToken);
-          break;
-        } catch (err: any) {
-          retries--;
-          if (retries === 0) {
-            console.warn('Voice suggestion failed after retries, allowing manual selection');
-          }
-          await new Promise(resolve => setTimeout(resolve, delay));
-          delay = Math.min(delay * 1.5, 5000);
-        }
-      }
-
-      if (suggestion) {
-        setSuggestedVoice(suggestion);
-        setSelectedVoiceId(suggestion.voiceId);
-      }
       setShowVoiceModal(true);
       setLoading(false);
       setLoadingVoice(false);
@@ -269,7 +248,7 @@ export default function NewCharacterPage() {
 
                   <div className="space-y-2 mb-6">
                     <p className="text-sm font-medium text-gray-700 mb-2">
-                      Or choose from all available voices:
+                      Choose a voice for your character:
                     </p>
                     <div className="max-h-64 overflow-y-auto space-y-2">
                       {availableVoices.map((voice) => (
