@@ -47,6 +47,12 @@ export default function DashboardPage() {
           <h1 className="text-2xl font-bold text-blue-600">Velora</h1>
           <div className="flex items-center gap-4">
             <span className="text-gray-700">Welcome, {user.username}</span>
+            <Link
+              href="/profile"
+              className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition"
+            >
+              Profile
+            </Link>
             <button
               onClick={handleLogout}
               className="px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg transition"

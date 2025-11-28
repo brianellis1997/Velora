@@ -3,6 +3,7 @@ import { ApiGatewayManagementApiClient, PostToConnectionCommand } from '@aws-sdk
 import { MessageRepository } from '../../../lib/dynamodb/repositories/MessageRepository';
 import { ConversationRepository } from '../../../lib/dynamodb/repositories/ConversationRepository';
 import { CharacterRepository } from '../../../lib/dynamodb/repositories/CharacterRepository';
+import { UserRepository } from '../../../lib/dynamodb/repositories/UserRepository';
 import { streamChatCompletion } from '../../../lib/groq/client';
 import { wsSuccessResponse, wsErrorResponse } from '../../../lib/utils/response';
 import { Logger } from '../../../lib/utils/logger';
@@ -12,6 +13,7 @@ const logger = new Logger('WsMessageFunction');
 const messageRepo = new MessageRepository();
 const conversationRepo = new ConversationRepository();
 const characterRepo = new CharacterRepository();
+const userRepo = new UserRepository();
 
 export const handler: APIGatewayProxyHandler = async (event) => {
   const connectionId = event.requestContext.connectionId!;
@@ -75,10 +77,39 @@ export const handler: APIGatewayProxyHandler = async (event) => {
       content,
     });
 
+    const user = await userRepo.getById(userId);
+
+    let systemPrompt = character.systemPrompt;
+
+    if (user?.profile) {
+      const userContext: string[] = ['\n\n[User Context]'];
+
+      if (user.profile.fullName) {
+        userContext.push(`User's name: ${user.profile.fullName}`);
+      }
+      if (user.profile.bio) {
+        userContext.push(`About user: ${user.profile.bio}`);
+      }
+      if (user.profile.age) {
+        userContext.push(`User's age: ${user.profile.age}`);
+      }
+      if (user.profile.location) {
+        userContext.push(`User's location: ${user.profile.location}`);
+      }
+      if (user.profile.interests && user.profile.interests.length > 0) {
+        userContext.push(`User interests: ${user.profile.interests.join(', ')}`);
+      }
+
+      if (userContext.length > 1) {
+        userContext.push('\nUse this context to personalize your responses when appropriate.');
+        systemPrompt += '\n' + userContext.join('\n');
+      }
+    }
+
     const recentMessages = await messageRepo.getRecentMessages(conversationId, 20);
 
     const contextMessages: ChatContextMessage[] = [
-      { role: 'system', content: character.systemPrompt },
+      { role: 'system', content: systemPrompt },
       ...recentMessages.map(msg => ({
         role: msg.role,
         content: msg.content,

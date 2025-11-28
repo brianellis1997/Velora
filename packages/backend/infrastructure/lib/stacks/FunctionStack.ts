@@ -25,6 +25,7 @@ export class FunctionStack extends cdk.Stack {
     confirm: lambda.Function;
     login: lambda.Function;
     getProfile: lambda.Function;
+    updateProfile: lambda.Function;
     createCharacter: lambda.Function;
     listCharacters: lambda.Function;
     getCharacter: lambda.Function;
@@ -109,6 +110,17 @@ export class FunctionStack extends cdk.Stack {
       handler: 'handler',
       entry: path.join(lambdaPath, 'users/profile.ts'),
       functionName: 'velora-get-profile',
+      timeout: cdk.Duration.seconds(10),
+      memorySize: 512,
+      environment: commonEnvironment,
+      bundling: commonBundling,
+    });
+
+    const updateProfileFunction = new lambdaNodejs.NodejsFunction(this, 'UpdateProfileFunction', {
+      runtime: lambda.Runtime.NODEJS_20_X,
+      handler: 'handler',
+      entry: path.join(lambdaPath, 'users/updateProfile.ts'),
+      functionName: 'velora-update-profile',
       timeout: cdk.Duration.seconds(10),
       memorySize: 512,
       environment: commonEnvironment,
@@ -256,6 +268,7 @@ export class FunctionStack extends cdk.Stack {
       confirmFunction,
       loginFunction,
       getProfileFunction,
+      updateProfileFunction,
       createCharacterFunction,
       listCharactersFunction,
       getCharacterFunction,
@@ -299,6 +312,7 @@ export class FunctionStack extends cdk.Stack {
       confirm: confirmFunction,
       login: loginFunction,
       getProfile: getProfileFunction,
+      updateProfile: updateProfileFunction,
       createCharacter: createCharacterFunction,
       listCharacters: listCharactersFunction,
       getCharacter: getCharacterFunction,

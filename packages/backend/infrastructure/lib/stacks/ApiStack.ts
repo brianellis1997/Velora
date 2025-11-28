@@ -15,6 +15,7 @@ interface ApiStackProps extends cdk.StackProps {
     confirm: lambda.Function;
     login: lambda.Function;
     getProfile: lambda.Function;
+    updateProfile: lambda.Function;
     createCharacter: lambda.Function;
     listCharacters: lambda.Function;
     getCharacter: lambda.Function;
@@ -82,6 +83,13 @@ export class ApiStack extends cdk.Stack {
       path: '/users/profile',
       methods: [apigatewayv2.HttpMethod.GET],
       integration: new apigatewayv2Integrations.HttpLambdaIntegration('GetProfileIntegration', functions.getProfile),
+      authorizer,
+    });
+
+    httpApi.addRoutes({
+      path: '/users/profile',
+      methods: [apigatewayv2.HttpMethod.PUT],
+      integration: new apigatewayv2Integrations.HttpLambdaIntegration('UpdateProfileIntegration', functions.updateProfile),
       authorizer,
     });
 

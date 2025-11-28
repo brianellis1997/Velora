@@ -4,7 +4,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/lib/store/authStore';
 import { getCharacter } from '@/lib/api/characters';
-import { createConversation, getMessages, transcribeAudio } from '@/lib/api/chat';
+import { createConversation, listConversations, getMessages, transcribeAudio } from '@/lib/api/chat';
 import { Character, Message } from '@velora/shared';
 import { useAudioRecorder } from '@/lib/hooks/useAudioRecorder';
 
@@ -52,11 +52,25 @@ export default function ChatPage() {
       const charResponse = await getCharacter(characterId!, accessToken!);
       setCharacter(charResponse.character);
 
-      const convResponse = await createConversation(characterId!, accessToken!);
-      setConversationId(convResponse.conversation.conversationId);
+      const conversationsResponse = await listConversations(accessToken!);
+      const existingConversation = conversationsResponse.conversations
+        .filter((c) => c.characterId === characterId)
+        .sort(
+          (a, b) =>
+            new Date(b.lastMessageAt || b.createdAt).getTime() -
+            new Date(a.lastMessageAt || a.createdAt).getTime()
+        )[0];
+
+      const conversation = existingConversation
+        ? existingConversation
+        : await createConversation(characterId!, accessToken!).then(
+            (r) => r.conversation
+          );
+
+      setConversationId(conversation.conversationId);
 
       const messagesResponse = await getMessages(
-        convResponse.conversation.conversationId,
+        conversation.conversationId,
         accessToken!
       );
       setMessages(messagesResponse.messages);
