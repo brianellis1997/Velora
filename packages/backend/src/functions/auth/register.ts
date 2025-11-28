@@ -32,11 +32,10 @@ export const handler: APIGatewayProxyHandler = async (event) => {
     const signUpResult = await cognito.send(
       new SignUpCommand({
         ClientId: clientId,
-        Username: email,
+        Username: username,
         Password: password,
         UserAttributes: [
           { Name: 'email', Value: email },
-          { Name: 'custom:username', Value: username },
         ],
       })
     );
@@ -47,7 +46,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
       await cognito.send(
         new AdminConfirmSignUpCommand({
           UserPoolId: process.env.USER_POOL_ID!,
-          Username: email,
+          Username: username,
         })
       );
     }

@@ -57,9 +57,9 @@ export default function LoginPage() {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium mb-2">Email</label>
+            <label className="block text-sm font-medium mb-2">Username or Email</label>
             <input
-              type="email"
+              type="text"
               required
               className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
               value={formData.email}

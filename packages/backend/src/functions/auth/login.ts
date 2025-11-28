@@ -15,9 +15,10 @@ export const handler: APIGatewayProxyHandler = async (event) => {
 
     const body = JSON.parse(event.body || '{}');
     const { email, password } = body;
+    const username = email; // Frontend sends 'email' field which can be username or email
 
-    if (!email || !password) {
-      throw new ValidationError('Email and password are required');
+    if (!username || !password) {
+      throw new ValidationError('Username/email and password are required');
     }
 
     const clientId = process.env.COGNITO_CLIENT_ID;
@@ -30,7 +31,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
         AuthFlow: 'USER_PASSWORD_AUTH',
         ClientId: clientId,
         AuthParameters: {
-          USERNAME: email,
+          USERNAME: username,
           PASSWORD: password,
         },
       })
@@ -40,7 +41,13 @@ export const handler: APIGatewayProxyHandler = async (event) => {
       throw new UnauthorizedError('Authentication failed');
     }
 
-    const user = await userRepo.getByEmail(email);
+    // Try to find user by email first, then by username
+    let user = username.includes('@') ? await userRepo.getByEmail(username) : null;
+    if (!user) {
+      // If not found by email or input wasn't an email, search by username
+      const allUsers = await userRepo.list();
+      user = allUsers.find(u => u.username === username) || null;
+    }
 
     if (!user) {
       throw new UnauthorizedError('User not found');
