@@ -32,6 +32,7 @@ const functionStack = new FunctionStack(app, 'VeloraFunctionStack', {
   description: 'Velora Function Stack - Lambda functions',
   tables: databaseStack.tables,
   userPool: authStack.userPool,
+  userPoolClient: authStack.userPoolClient,
 });
 
 const apiStack = new ApiStack(app, 'VeloraApiStack', {

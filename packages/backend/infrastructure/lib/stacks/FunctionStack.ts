@@ -16,6 +16,7 @@ interface FunctionStackProps extends cdk.StackProps {
     subscriptions: dynamodb.Table;
   };
   userPool: cognito.UserPool;
+  userPoolClient: cognito.UserPoolClient;
 }
 
 export class FunctionStack extends cdk.Stack {
@@ -39,7 +40,7 @@ export class FunctionStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props: FunctionStackProps) {
     super(scope, id, props);
 
-    const { tables, userPool } = props;
+    const { tables, userPool, userPoolClient } = props;
 
     const backendRoot = path.join(__dirname, '../../..');
     const lambdaPath = path.join(backendRoot, 'src/functions');
@@ -51,6 +52,7 @@ export class FunctionStack extends cdk.Stack {
       MESSAGES_TABLE: tables.messages.tableName,
       SUBSCRIPTIONS_TABLE: tables.subscriptions.tableName,
       USER_POOL_ID: userPool.userPoolId,
+      COGNITO_CLIENT_ID: userPoolClient.userPoolClientId,
       GROQ_API_KEY_SECRET_NAME: 'velora/groq-api-key',
       AWS_NODEJS_CONNECTION_REUSE_ENABLED: '1',
     };
