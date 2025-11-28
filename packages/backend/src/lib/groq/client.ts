@@ -23,8 +23,13 @@ async function getGroqApiKey(): Promise<string> {
   );
 
   if (response.SecretString) {
-    const secret = JSON.parse(response.SecretString);
-    cachedApiKey = secret.GROQ_API_KEY || secret;
+    try {
+      const secret = JSON.parse(response.SecretString);
+      cachedApiKey = secret.GROQ_API_KEY || secret;
+    } catch {
+      // If parsing fails, the secret is a plain string
+      cachedApiKey = response.SecretString;
+    }
   } else {
     throw new Error('Groq API key not found in Secrets Manager');
   }

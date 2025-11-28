@@ -40,7 +40,7 @@ export async function transcribeAudio(
 
   return apiRequest('/chat/transcribe', {
     method: 'POST',
-    body: base64Audio,
+    body: { audio: base64Audio },
     token,
   });
 }
