@@ -9,6 +9,7 @@ export class AuthStack extends cdk.Stack {
   public readonly groqApiKeySecret: secretsmanager.Secret;
   public readonly elevenlabsApiKeySecret: secretsmanager.Secret;
   public readonly openaiApiKeySecret: secretsmanager.Secret;
+  public readonly xaiApiKeySecret: secretsmanager.Secret;
 
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
@@ -99,6 +100,16 @@ export class AuthStack extends cdk.Stack {
       secretStringValue: cdk.SecretValue.unsafePlainText(process.env.OPENAI_API_KEY),
     });
 
+    if (!process.env.XAI_API_KEY) {
+      throw new Error('XAI_API_KEY environment variable is required');
+    }
+
+    this.xaiApiKeySecret = new secretsmanager.Secret(this, 'XAIApiKeySecret', {
+      secretName: 'velora/xai-api-key',
+      description: 'xAI API key for Velora chat (Grok model)',
+      secretStringValue: cdk.SecretValue.unsafePlainText(process.env.XAI_API_KEY),
+    });
+
     new cdk.CfnOutput(this, 'UserPoolId', {
       value: this.userPool.userPoolId,
       exportName: 'VeloraUserPoolId',
@@ -122,6 +133,11 @@ export class AuthStack extends cdk.Stack {
     new cdk.CfnOutput(this, 'OpenAIApiKeySecretArn', {
       value: this.openaiApiKeySecret.secretArn,
       exportName: 'VeloraOpenAIApiKeySecretArn',
+    });
+
+    new cdk.CfnOutput(this, 'XAIApiKeySecretArn', {
+      value: this.xaiApiKeySecret.secretArn,
+      exportName: 'VeloraXAIApiKeySecretArn',
     });
   }
 }

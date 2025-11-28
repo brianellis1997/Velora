@@ -1,21 +1,21 @@
-import Groq from 'groq-sdk';
+import OpenAI from 'openai';
 import { SecretsManagerClient, GetSecretValueCommand } from '@aws-sdk/client-secrets-manager';
 import { ChatContextMessage, GeneratedCharacterProfile, PersonalityTone } from '@velora/shared';
 
-let groqClient: Groq | null = null;
+let xaiClient: OpenAI | null = null;
 let cachedApiKey: string | null = null;
 
-async function getGroqApiKey(): Promise<string> {
+async function getXaiApiKey(): Promise<string> {
   if (cachedApiKey) {
     return cachedApiKey;
   }
 
-  if (process.env.GROQ_API_KEY) {
-    cachedApiKey = process.env.GROQ_API_KEY;
+  if (process.env.XAI_API_KEY) {
+    cachedApiKey = process.env.XAI_API_KEY;
     return cachedApiKey;
   }
 
-  const secretName = process.env.GROQ_API_KEY_SECRET_NAME || 'velora/groq-api-key';
+  const secretName = process.env.XAI_API_KEY_SECRET_NAME || 'velora/xai-api-key';
   const client = new SecretsManagerClient({});
 
   const response = await client.send(
@@ -25,36 +25,38 @@ async function getGroqApiKey(): Promise<string> {
   if (response.SecretString) {
     try {
       const secret = JSON.parse(response.SecretString);
-      cachedApiKey = secret.GROQ_API_KEY || secret;
+      cachedApiKey = secret.XAI_API_KEY || secret;
     } catch {
-      // If parsing fails, the secret is a plain string
       cachedApiKey = response.SecretString;
     }
   } else {
-    throw new Error('Groq API key not found in Secrets Manager');
+    throw new Error('xAI API key not found in Secrets Manager');
   }
 
   return cachedApiKey;
 }
 
-async function getGroqClient(): Promise<Groq> {
-  if (groqClient) {
-    return groqClient;
+async function getXaiClient(): Promise<OpenAI> {
+  if (xaiClient) {
+    return xaiClient;
   }
 
-  const apiKey = await getGroqApiKey();
-  groqClient = new Groq({ apiKey });
-  return groqClient;
+  const apiKey = await getXaiApiKey();
+  xaiClient = new OpenAI({
+    apiKey,
+    baseURL: 'https://api.x.ai/v1',
+  });
+  return xaiClient;
 }
 
 export async function streamChatCompletion(
   messages: ChatContextMessage[],
   onToken: (token: string) => Promise<void>
 ): Promise<{ content: string; tokens: number; model: string }> {
-  const groq = await getGroqClient();
+  const xai = await getXaiClient();
 
-  const stream = await groq.chat.completions.create({
-    model: 'llama-3.3-70b-versatile',
+  const stream = await xai.chat.completions.create({
+    model: 'grok-2-1212',
     messages: messages as any,
     stream: true,
     temperature: 0.9,
@@ -75,12 +77,12 @@ export async function streamChatCompletion(
   return {
     content: fullContent,
     tokens: fullContent.split(/\s+/).length * 1.3,
-    model: 'llama-3.3-70b-versatile',
+    model: 'grok-2-1212',
   };
 }
 
 export async function generateCharacterFromPrompt(prompt: string): Promise<GeneratedCharacterProfile> {
-  const groq = await getGroqClient();
+  const xai = await getXaiClient();
 
   const systemPrompt = `You are a character designer for an AI companion service. Generate a detailed character profile based on the user's description. Return ONLY a JSON object with the following structure:
 {
@@ -92,8 +94,8 @@ export async function generateCharacterFromPrompt(prompt: string): Promise<Gener
   "systemPrompt": "string (detailed instructions for the AI to roleplay this character)"
 }`;
 
-  const response = await groq.chat.completions.create({
-    model: 'llama-3.3-70b-versatile',
+  const response = await xai.chat.completions.create({
+    model: 'grok-2-1212',
     messages: [
       { role: 'system', content: systemPrompt },
       { role: 'user', content: `Create a character based on this description: ${prompt}` },
