@@ -23,6 +23,7 @@ interface ApiStackProps extends cdk.StackProps {
     createConversation: lambda.Function;
     listConversations: lambda.Function;
     getMessages: lambda.Function;
+    transcribe: lambda.Function;
     wsConnect: lambda.Function;
     wsDisconnect: lambda.Function;
     wsMessage: lambda.Function;
@@ -137,6 +138,13 @@ export class ApiStack extends cdk.Stack {
       path: '/conversations/{conversationId}/messages',
       methods: [apigatewayv2.HttpMethod.GET],
       integration: new apigatewayv2Integrations.HttpLambdaIntegration('GetMessagesIntegration', functions.getMessages),
+      authorizer,
+    });
+
+    httpApi.addRoutes({
+      path: '/chat/transcribe',
+      methods: [apigatewayv2.HttpMethod.POST],
+      integration: new apigatewayv2Integrations.HttpLambdaIntegration('TranscribeIntegration', functions.transcribe),
       authorizer,
     });
 

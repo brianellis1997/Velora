@@ -31,3 +31,29 @@ export async function getMessages(
     token,
   });
 }
+
+export async function transcribeAudio(
+  audioBlob: Blob,
+  token: string
+): Promise<{ text: string }> {
+  const base64Audio = await blobToBase64(audioBlob);
+
+  return apiRequest('/chat/transcribe', {
+    method: 'POST',
+    body: base64Audio,
+    token,
+  });
+}
+
+function blobToBase64(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const base64String = reader.result as string;
+      const base64Data = base64String.split(',')[1];
+      resolve(base64Data);
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}

@@ -1,9 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/lib/store/authStore';
 import { createCharacter } from '@/lib/api/characters';
+import { transcribeAudio } from '@/lib/api/chat';
+import { useAudioRecorder } from '@/lib/hooks/useAudioRecorder';
 
 export default function NewCharacterPage() {
   const router = useRouter();
@@ -11,6 +13,46 @@ export default function NewCharacterPage() {
   const [prompt, setPrompt] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [transcribing, setTranscribing] = useState(false);
+
+  const {
+    isRecording,
+    audioBlob,
+    startRecording,
+    stopRecording,
+    clearRecording,
+    error: recordingError,
+  } = useAudioRecorder();
+
+  useEffect(() => {
+    if (audioBlob && accessToken) {
+      handleTranscription();
+    }
+  }, [audioBlob, accessToken]);
+
+  const handleTranscription = async () => {
+    if (!audioBlob || !accessToken) return;
+
+    try {
+      setTranscribing(true);
+      setError('');
+      const result = await transcribeAudio(audioBlob, accessToken);
+      setPrompt((prev) => (prev ? prev + ' ' + result.text : result.text));
+      clearRecording();
+    } catch (err: any) {
+      setError(err.message || 'Transcription failed');
+    } finally {
+      setTranscribing(false);
+    }
+  };
+
+  const handleMicrophoneClick = async () => {
+    if (isRecording) {
+      stopRecording();
+    } else {
+      await startRecording();
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -54,21 +96,46 @@ export default function NewCharacterPage() {
 
         <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow p-8">
           <div className="mb-6">
-            <label className="block text-lg font-medium mb-2">
-              Describe your companion
-            </label>
+            <div className="flex justify-between items-center mb-2">
+              <label className="block text-lg font-medium">
+                Describe your companion
+              </label>
+              <button
+                type="button"
+                onClick={handleMicrophoneClick}
+                disabled={loading || transcribing}
+                className={`px-4 py-2 rounded-lg transition ${
+                  isRecording
+                    ? 'bg-red-600 text-white hover:bg-red-700'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                } disabled:opacity-50`}
+                title={isRecording ? 'Stop recording' : 'Use voice input'}
+              >
+                {isRecording ? '⏹ Stop' : '🎤 Dictate'}
+              </button>
+            </div>
             <textarea
               required
               minLength={10}
               rows={6}
               className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 resize-none"
-              placeholder="Example: Create a playful and adventurous character who loves hiking and has a quirky sense of humor. She's supportive and always knows how to cheer me up."
+              placeholder={
+                transcribing
+                  ? 'Transcribing your voice...'
+                  : 'Example: Create a playful and adventurous character who loves hiking and has a quirky sense of humor. She\'s supportive and always knows how to cheer me up.'
+              }
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
+              disabled={transcribing}
             />
             <p className="text-sm text-gray-500 mt-2">
-              Minimum 10 characters. Be as detailed as you like!
+              {transcribing
+                ? 'Transcribing your audio...'
+                : 'Minimum 10 characters. Be as detailed as you like!'}
             </p>
+            {recordingError && (
+              <p className="text-sm text-red-600 mt-2">{recordingError}</p>
+            )}
           </div>
 
           <div className="flex gap-4">

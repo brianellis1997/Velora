@@ -4,8 +4,9 @@ import { useEffect, useState, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/lib/store/authStore';
 import { getCharacter } from '@/lib/api/characters';
-import { createConversation, getMessages } from '@/lib/api/chat';
+import { createConversation, getMessages, transcribeAudio } from '@/lib/api/chat';
 import { Character, Message } from '@velora/shared';
+import { useAudioRecorder } from '@/lib/hooks/useAudioRecorder';
 
 const WS_URL = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:3001';
 
@@ -22,9 +23,19 @@ export default function ChatPage() {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [streamingMessage, setStreamingMessage] = useState('');
+  const [transcribing, setTranscribing] = useState(false);
 
   const wsRef = useRef<WebSocket | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const {
+    isRecording,
+    audioBlob,
+    startRecording,
+    stopRecording,
+    clearRecording,
+    error: recordingError,
+  } = useAudioRecorder();
 
   useEffect(() => {
     if (!user || !accessToken || !characterId) {
@@ -133,10 +144,39 @@ export default function ChatPage() {
   }, [messages, streamingMessage]);
 
   useEffect(() => {
+    if (audioBlob && accessToken) {
+      handleTranscription();
+    }
+  }, [audioBlob, accessToken]);
+
+  useEffect(() => {
     return () => {
       wsRef.current?.close();
     };
   }, []);
+
+  const handleTranscription = async () => {
+    if (!audioBlob || !accessToken) return;
+
+    try {
+      setTranscribing(true);
+      const result = await transcribeAudio(audioBlob, accessToken);
+      setInputValue(result.text);
+      clearRecording();
+    } catch (error) {
+      console.error('Transcription failed:', error);
+    } finally {
+      setTranscribing(false);
+    }
+  };
+
+  const handleMicrophoneClick = async () => {
+    if (isRecording) {
+      stopRecording();
+    } else {
+      await startRecording();
+    }
+  };
 
   if (loading) {
     return (
@@ -214,22 +254,39 @@ export default function ChatPage() {
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
             onKeyPress={(e) => {
-              if (e.key === 'Enter' && !sending) {
+              if (e.key === 'Enter' && !sending && !transcribing) {
                 sendMessage();
               }
             }}
-            placeholder="Type your message..."
+            placeholder={transcribing ? 'Transcribing...' : 'Type your message...'}
             className="flex-1 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
-            disabled={sending}
+            disabled={sending || transcribing}
           />
           <button
+            onClick={handleMicrophoneClick}
+            disabled={sending || transcribing}
+            className={`px-4 py-2 rounded-lg transition ${
+              isRecording
+                ? 'bg-red-600 text-white hover:bg-red-700'
+                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+            } disabled:opacity-50`}
+            title={isRecording ? 'Stop recording' : 'Start recording'}
+          >
+            {isRecording ? '⏹' : '🎤'}
+          </button>
+          <button
             onClick={sendMessage}
-            disabled={sending || !inputValue.trim()}
+            disabled={sending || !inputValue.trim() || transcribing}
             className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
           >
             {sending ? 'Sending...' : 'Send'}
           </button>
         </div>
+        {recordingError && (
+          <div className="max-w-4xl mx-auto mt-2 text-sm text-red-600">
+            {recordingError}
+          </div>
+        )}
       </div>
     </div>
   );

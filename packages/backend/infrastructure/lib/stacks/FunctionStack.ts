@@ -33,6 +33,7 @@ export class FunctionStack extends cdk.Stack {
     createConversation: lambda.Function;
     listConversations: lambda.Function;
     getMessages: lambda.Function;
+    transcribe: lambda.Function;
     wsConnect: lambda.Function;
     wsDisconnect: lambda.Function;
     wsMessage: lambda.Function;
@@ -202,6 +203,17 @@ export class FunctionStack extends cdk.Stack {
       bundling: commonBundling,
     });
 
+    const transcribeFunction = new lambdaNodejs.NodejsFunction(this, 'TranscribeFunction', {
+      runtime: lambda.Runtime.NODEJS_20_X,
+      handler: 'handler',
+      entry: path.join(lambdaPath, 'chat/transcribe.ts'),
+      functionName: 'velora-transcribe',
+      timeout: cdk.Duration.seconds(30),
+      memorySize: 512,
+      environment: commonEnvironment,
+      bundling: commonBundling,
+    });
+
     const wsConnectFunction = new lambdaNodejs.NodejsFunction(this, 'WsConnectFunction', {
       runtime: lambda.Runtime.NODEJS_20_X,
       handler: 'handler',
@@ -252,6 +264,7 @@ export class FunctionStack extends cdk.Stack {
       createConversationFunction,
       listConversationsFunction,
       getMessagesFunction,
+      transcribeFunction,
       wsConnectFunction,
       wsDisconnectFunction,
       wsMessageFunction,
@@ -294,6 +307,7 @@ export class FunctionStack extends cdk.Stack {
       createConversation: createConversationFunction,
       listConversations: listConversationsFunction,
       getMessages: getMessagesFunction,
+      transcribe: transcribeFunction,
       wsConnect: wsConnectFunction,
       wsDisconnect: wsDisconnectFunction,
       wsMessage: wsMessageFunction,
