@@ -25,6 +25,9 @@ interface ApiStackProps extends cdk.StackProps {
     listConversations: lambda.Function;
     getMessages: lambda.Function;
     transcribe: lambda.Function;
+    synthesizeSpeech: lambda.Function;
+    listVoices: lambda.Function;
+    suggestVoice: lambda.Function;
     wsConnect: lambda.Function;
     wsDisconnect: lambda.Function;
     wsMessage: lambda.Function;
@@ -153,6 +156,27 @@ export class ApiStack extends cdk.Stack {
       path: '/chat/transcribe',
       methods: [apigatewayv2.HttpMethod.POST],
       integration: new apigatewayv2Integrations.HttpLambdaIntegration('TranscribeIntegration', functions.transcribe),
+      authorizer,
+    });
+
+    httpApi.addRoutes({
+      path: '/tts/synthesize',
+      methods: [apigatewayv2.HttpMethod.POST],
+      integration: new apigatewayv2Integrations.HttpLambdaIntegration('SynthesizeSpeechIntegration', functions.synthesizeSpeech),
+      authorizer,
+    });
+
+    httpApi.addRoutes({
+      path: '/tts/voices',
+      methods: [apigatewayv2.HttpMethod.GET],
+      integration: new apigatewayv2Integrations.HttpLambdaIntegration('ListVoicesIntegration', functions.listVoices),
+      authorizer,
+    });
+
+    httpApi.addRoutes({
+      path: '/characters/{characterId}/suggest-voice',
+      methods: [apigatewayv2.HttpMethod.GET],
+      integration: new apigatewayv2Integrations.HttpLambdaIntegration('SuggestVoiceIntegration', functions.suggestVoice),
       authorizer,
     });
 

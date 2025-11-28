@@ -5,8 +5,11 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/lib/store/authStore';
 import { getCharacter } from '@/lib/api/characters';
 import { createConversation, listConversations, getMessages, transcribeAudio } from '@/lib/api/chat';
-import { Character, Message } from '@velora/shared';
+import { synthesizeSpeech } from '@/lib/api/tts';
+import { getProfile } from '@/lib/api/users';
+import { Character, Message, Conversation } from '@velora/shared';
 import { useAudioRecorder } from '@/lib/hooks/useAudioRecorder';
+import { useAudioPlayer } from '@/lib/hooks/useAudioPlayer';
 
 const WS_URL = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:3001';
 
@@ -18,12 +21,16 @@ export default function ChatPage() {
   const { user, accessToken } = useAuthStore();
   const [character, setCharacter] = useState<Character | null>(null);
   const [conversationId, setConversationId] = useState<string | null>(null);
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [showSidebar, setShowSidebar] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [streamingMessage, setStreamingMessage] = useState('');
   const [transcribing, setTranscribing] = useState(false);
+  const [voiceEnabled, setVoiceEnabled] = useState(false);
+  const [synthesizingAudio, setSynthesizingAudio] = useState<number | null>(null);
 
   const wsRef = useRef<WebSocket | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -38,6 +45,8 @@ export default function ChatPage() {
     error: recordingError,
   } = useAudioRecorder();
 
+  const { isPlaying, playAudio, stopAudio } = useAudioPlayer();
+
   useEffect(() => {
     if (!user || !accessToken || !characterId) {
       router.push('/login');
@@ -49,17 +58,26 @@ export default function ChatPage() {
 
   const loadCharacterAndConversation = async () => {
     try {
-      const charResponse = await getCharacter(characterId!, accessToken!);
-      setCharacter(charResponse.character);
+      const [charResponse, profileResponse, conversationsResponse] = await Promise.all([
+        getCharacter(characterId!, accessToken!),
+        getProfile(accessToken!),
+        listConversations(accessToken!),
+      ]);
 
-      const conversationsResponse = await listConversations(accessToken!);
-      const existingConversation = conversationsResponse.conversations
+      setCharacter(charResponse.character);
+      setVoiceEnabled(profileResponse.user.metadata?.preferences?.voiceEnabled || false);
+
+      const characterConversations = conversationsResponse.conversations
         .filter((c) => c.characterId === characterId)
         .sort(
           (a, b) =>
             new Date(b.lastMessageAt || b.createdAt).getTime() -
             new Date(a.lastMessageAt || a.createdAt).getTime()
-        )[0];
+        );
+
+      setConversations(characterConversations);
+
+      const existingConversation = characterConversations[0];
 
       const conversation = existingConversation
         ? existingConversation
@@ -78,6 +96,63 @@ export default function ChatPage() {
       console.error('Failed to load:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handlePlayAudio = async (messageIndex: number, messageContent: string) => {
+    if (!character?.voiceConfig || !accessToken) return;
+
+    try {
+      setSynthesizingAudio(messageIndex);
+      const response = await synthesizeSpeech(
+        messageContent,
+        character.voiceConfig.voiceId,
+        accessToken
+      );
+      playAudio(response.audioContent);
+    } catch (error) {
+      console.error('Failed to synthesize speech:', error);
+    } finally {
+      setSynthesizingAudio(null);
+    }
+  };
+
+  const handleNewConversation = async () => {
+    if (!characterId || !accessToken) return;
+
+    try {
+      const response = await createConversation(characterId, accessToken);
+      const newConversation = response.conversation;
+
+      setConversations([newConversation, ...conversations]);
+      setConversationId(newConversation.conversationId);
+      setMessages([]);
+      setShowSidebar(false);
+
+      if (wsRef.current) {
+        wsRef.current.close();
+        wsRef.current = null;
+      }
+    } catch (error) {
+      console.error('Failed to create new conversation:', error);
+    }
+  };
+
+  const handleSwitchConversation = async (convId: string) => {
+    if (!accessToken) return;
+
+    try {
+      setConversationId(convId);
+      const messagesResponse = await getMessages(convId, accessToken);
+      setMessages(messagesResponse.messages);
+      setShowSidebar(false);
+
+      if (wsRef.current) {
+        wsRef.current.close();
+        wsRef.current = null;
+      }
+    } catch (error) {
+      console.error('Failed to switch conversation:', error);
     }
   };
 
@@ -235,11 +310,20 @@ export default function ChatPage() {
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <nav className="bg-white shadow">
         <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
-          <div>
-            <h1 className="text-xl font-bold">{character.name}</h1>
-            <p className="text-sm text-gray-500">
-              {character.personalityTraits.tone}
-            </p>
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => setShowSidebar(!showSidebar)}
+              className="px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition"
+              title="Conversation History"
+            >
+              ☰
+            </button>
+            <div>
+              <h1 className="text-xl font-bold">{character.name}</h1>
+              <p className="text-sm text-gray-500">
+                {character.personalityTraits.tone}
+              </p>
+            </div>
           </div>
           <button
             onClick={() => router.push('/dashboard')}
@@ -250,6 +334,46 @@ export default function ChatPage() {
         </div>
       </nav>
 
+      {showSidebar && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-40" onClick={() => setShowSidebar(false)} />
+      )}
+
+      <div className={`fixed left-0 top-0 h-full w-80 bg-white shadow-lg transform transition-transform duration-300 z-50 ${showSidebar ? 'translate-x-0' : '-translate-x-full'}`}>
+        <div className="p-4 border-b">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-lg font-bold">Conversations</h2>
+            <button
+              onClick={() => setShowSidebar(false)}
+              className="text-gray-500 hover:text-gray-700"
+            >
+              ✕
+            </button>
+          </div>
+          <button
+            onClick={handleNewConversation}
+            className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+          >
+            + New Conversation
+          </button>
+        </div>
+        <div className="overflow-y-auto h-[calc(100%-120px)]">
+          {conversations.map((conv) => (
+            <button
+              key={conv.conversationId}
+              onClick={() => handleSwitchConversation(conv.conversationId)}
+              className={`w-full p-4 text-left border-b hover:bg-gray-50 transition ${conv.conversationId === conversationId ? 'bg-blue-50' : ''}`}
+            >
+              <p className="font-medium text-sm truncate">
+                {new Date(conv.createdAt).toLocaleDateString()}
+              </p>
+              <p className="text-xs text-gray-500">
+                {conv.lastMessageAt ? new Date(conv.lastMessageAt).toLocaleTimeString() : 'No messages yet'}
+              </p>
+            </button>
+          ))}
+        </div>
+      </div>
+
       <div className="flex-1 overflow-y-auto p-4 max-w-4xl mx-auto w-full">
         <div className="space-y-4">
           {messages.map((message, index) => (
@@ -259,14 +383,30 @@ export default function ChatPage() {
                 message.role === 'user' ? 'justify-end' : 'justify-start'
               }`}
             >
-              <div
-                className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
-                  message.role === 'user'
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-white text-gray-900 shadow'
-                }`}
-              >
-                {message.content}
+              <div className="flex items-end gap-2">
+                {message.role === 'assistant' && voiceEnabled && character?.voiceConfig && (
+                  <button
+                    onClick={() => handlePlayAudio(index, message.content)}
+                    disabled={synthesizingAudio === index || isPlaying}
+                    className="mb-1 p-2 text-gray-500 hover:text-blue-600 transition disabled:opacity-50"
+                    title="Play audio"
+                  >
+                    {synthesizingAudio === index ? (
+                      <span className="text-sm">⏳</span>
+                    ) : (
+                      <span className="text-sm">🔊</span>
+                    )}
+                  </button>
+                )}
+                <div
+                  className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
+                    message.role === 'user'
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-white text-gray-900 shadow'
+                  }`}
+                >
+                  {message.content}
+                </div>
               </div>
             </div>
           ))}

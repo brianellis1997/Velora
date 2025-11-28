@@ -30,6 +30,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
         subscriptionTier: user.subscriptionTier,
         messageCredits: user.messageCredits,
         createdAt: user.createdAt,
+        profile: user.profile,
         metadata: user.metadata,
       },
     });

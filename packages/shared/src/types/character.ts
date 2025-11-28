@@ -13,6 +13,15 @@ export const PersonalityTraitsSchema = z.object({
 
 export type PersonalityTraits = z.infer<typeof PersonalityTraitsSchema>;
 
+export const VoiceConfigSchema = z.object({
+  provider: z.literal('elevenlabs'),
+  voiceId: z.string(),
+  voiceName: z.string(),
+  autoAssigned: z.boolean(),
+}).optional();
+
+export type VoiceConfig = z.infer<typeof VoiceConfigSchema>;
+
 export const CharacterSchema = z.object({
   characterId: z.string().uuid(),
   userId: z.string().uuid(),
@@ -20,6 +29,7 @@ export const CharacterSchema = z.object({
   avatar: z.string().url().optional(),
   systemPrompt: z.string(),
   personalityTraits: PersonalityTraitsSchema,
+  voiceConfig: VoiceConfigSchema,
   isPublic: z.boolean(),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),

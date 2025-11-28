@@ -35,6 +35,9 @@ export class FunctionStack extends cdk.Stack {
     listConversations: lambda.Function;
     getMessages: lambda.Function;
     transcribe: lambda.Function;
+    synthesizeSpeech: lambda.Function;
+    listVoices: lambda.Function;
+    suggestVoice: lambda.Function;
     wsConnect: lambda.Function;
     wsDisconnect: lambda.Function;
     wsMessage: lambda.Function;
@@ -226,6 +229,39 @@ export class FunctionStack extends cdk.Stack {
       bundling: commonBundling,
     });
 
+    const synthesizeSpeechFunction = new lambdaNodejs.NodejsFunction(this, 'SynthesizeSpeechFunction', {
+      runtime: lambda.Runtime.NODEJS_20_X,
+      handler: 'handler',
+      entry: path.join(lambdaPath, 'tts/synthesize.ts'),
+      functionName: 'velora-synthesize-speech',
+      timeout: cdk.Duration.seconds(30),
+      memorySize: 512,
+      environment: commonEnvironment,
+      bundling: commonBundling,
+    });
+
+    const listVoicesFunction = new lambdaNodejs.NodejsFunction(this, 'ListVoicesFunction', {
+      runtime: lambda.Runtime.NODEJS_20_X,
+      handler: 'handler',
+      entry: path.join(lambdaPath, 'tts/listVoices.ts'),
+      functionName: 'velora-list-voices',
+      timeout: cdk.Duration.seconds(10),
+      memorySize: 512,
+      environment: commonEnvironment,
+      bundling: commonBundling,
+    });
+
+    const suggestVoiceFunction = new lambdaNodejs.NodejsFunction(this, 'SuggestVoiceFunction', {
+      runtime: lambda.Runtime.NODEJS_20_X,
+      handler: 'handler',
+      entry: path.join(lambdaPath, 'tts/suggestVoice.ts'),
+      functionName: 'velora-suggest-voice',
+      timeout: cdk.Duration.seconds(30),
+      memorySize: 512,
+      environment: commonEnvironment,
+      bundling: commonBundling,
+    });
+
     const wsConnectFunction = new lambdaNodejs.NodejsFunction(this, 'WsConnectFunction', {
       runtime: lambda.Runtime.NODEJS_20_X,
       handler: 'handler',
@@ -278,6 +314,9 @@ export class FunctionStack extends cdk.Stack {
       listConversationsFunction,
       getMessagesFunction,
       transcribeFunction,
+      synthesizeSpeechFunction,
+      listVoicesFunction,
+      suggestVoiceFunction,
       wsConnectFunction,
       wsDisconnectFunction,
       wsMessageFunction,
@@ -295,6 +334,16 @@ export class FunctionStack extends cdk.Stack {
           effect: iam.Effect.ALLOW,
           actions: ['secretsmanager:GetSecretValue'],
           resources: [`arn:aws:secretsmanager:${this.region}:${this.account}:secret:velora/groq-api-key-*`],
+        })
+      );
+    });
+
+    [synthesizeSpeechFunction, listVoicesFunction, suggestVoiceFunction].forEach(fn => {
+      fn.addToRolePolicy(
+        new iam.PolicyStatement({
+          effect: iam.Effect.ALLOW,
+          actions: ['secretsmanager:GetSecretValue'],
+          resources: [`arn:aws:secretsmanager:${this.region}:${this.account}:secret:velora/elevenlabs-api-key-*`],
         })
       );
     });
@@ -322,6 +371,9 @@ export class FunctionStack extends cdk.Stack {
       listConversations: listConversationsFunction,
       getMessages: getMessagesFunction,
       transcribe: transcribeFunction,
+      synthesizeSpeech: synthesizeSpeechFunction,
+      listVoices: listVoicesFunction,
+      suggestVoice: suggestVoiceFunction,
       wsConnect: wsConnectFunction,
       wsDisconnect: wsDisconnectFunction,
       wsMessage: wsMessageFunction,

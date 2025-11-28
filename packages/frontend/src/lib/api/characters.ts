@@ -31,6 +31,18 @@ export async function getCharacter(
   });
 }
 
+export async function updateCharacter(
+  characterId: string,
+  updates: Partial<Character>,
+  token: string
+): Promise<{ character: Character }> {
+  return apiRequest(`/characters/${characterId}`, {
+    method: 'PUT',
+    body: updates,
+    token,
+  });
+}
+
 export async function deleteCharacter(
   characterId: string,
   token: string

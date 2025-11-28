@@ -3,8 +3,9 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/lib/store/authStore';
-import { createCharacter } from '@/lib/api/characters';
+import { createCharacter, updateCharacter } from '@/lib/api/characters';
 import { transcribeAudio } from '@/lib/api/chat';
+import { listVoices, suggestVoice, Voice } from '@/lib/api/tts';
 import { useAudioRecorder } from '@/lib/hooks/useAudioRecorder';
 
 export default function NewCharacterPage() {
@@ -14,6 +15,17 @@ export default function NewCharacterPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [transcribing, setTranscribing] = useState(false);
+
+  const [showVoiceModal, setShowVoiceModal] = useState(false);
+  const [createdCharacterId, setCreatedCharacterId] = useState<string | null>(null);
+  const [suggestedVoice, setSuggestedVoice] = useState<{
+    voiceId: string;
+    voiceName: string;
+    reasoning: string;
+  } | null>(null);
+  const [availableVoices, setAvailableVoices] = useState<Voice[]>([]);
+  const [selectedVoiceId, setSelectedVoiceId] = useState<string>('');
+  const [loadingVoice, setLoadingVoice] = useState(false);
 
   const {
     isRecording,
@@ -66,11 +78,77 @@ export default function NewCharacterPage() {
 
     try {
       const response = await createCharacter({ prompt }, accessToken);
-      router.push(`/chat?characterId=${response.character.characterId}`);
+      const characterId = response.character.characterId;
+      setCreatedCharacterId(characterId);
+
+      setLoadingVoice(true);
+
+      const voicesResponse = await listVoices(accessToken);
+      setAvailableVoices(voicesResponse.voices);
+
+      let suggestion = null;
+      let retries = 5;
+      let delay = 2000;
+      while (retries > 0) {
+        try {
+          suggestion = await suggestVoice(characterId, accessToken);
+          break;
+        } catch (err: any) {
+          retries--;
+          if (retries === 0) {
+            console.warn('Voice suggestion failed after retries, allowing manual selection');
+          }
+          await new Promise(resolve => setTimeout(resolve, delay));
+          delay = Math.min(delay * 1.5, 5000);
+        }
+      }
+
+      if (suggestion) {
+        setSuggestedVoice(suggestion);
+        setSelectedVoiceId(suggestion.voiceId);
+      }
+      setShowVoiceModal(true);
+      setLoading(false);
+      setLoadingVoice(false);
     } catch (err: any) {
       setError(err.message || 'Failed to create character');
-    } finally {
       setLoading(false);
+      setLoadingVoice(false);
+    }
+  };
+
+  const handleSaveVoice = async () => {
+    if (!createdCharacterId || !accessToken || !selectedVoiceId) return;
+
+    setLoadingVoice(true);
+    try {
+      const selectedVoice = availableVoices.find((v) => v.voiceId === selectedVoiceId);
+      if (!selectedVoice) return;
+
+      await updateCharacter(
+        createdCharacterId,
+        {
+          voiceConfig: {
+            provider: 'elevenlabs',
+            voiceId: selectedVoice.voiceId,
+            voiceName: selectedVoice.name,
+            autoAssigned: selectedVoiceId === suggestedVoice?.voiceId,
+          },
+        },
+        accessToken
+      );
+
+      router.push(`/chat?characterId=${createdCharacterId}`);
+    } catch (err: any) {
+      setError(err.message || 'Failed to save voice');
+    } finally {
+      setLoadingVoice(false);
+    }
+  };
+
+  const handleSkipVoice = () => {
+    if (createdCharacterId) {
+      router.push(`/chat?characterId=${createdCharacterId}`);
     }
   };
 
@@ -166,6 +244,88 @@ export default function NewCharacterPage() {
           </ul>
         </div>
       </div>
+
+      {showVoiceModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <h3 className="text-2xl font-bold mb-4">Choose a Voice</h3>
+
+              {loadingVoice ? (
+                <div className="text-center py-8">
+                  <p className="text-gray-500">Finding the perfect voice...</p>
+                </div>
+              ) : (
+                <>
+                  {suggestedVoice && (
+                    <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                      <p className="font-semibold mb-2">🎯 AI Suggested Voice:</p>
+                      <p className="text-lg font-medium text-blue-600 mb-1">
+                        {suggestedVoice.voiceName}
+                      </p>
+                      <p className="text-sm text-gray-600">{suggestedVoice.reasoning}</p>
+                    </div>
+                  )}
+
+                  <div className="space-y-2 mb-6">
+                    <p className="text-sm font-medium text-gray-700 mb-2">
+                      Or choose from all available voices:
+                    </p>
+                    <div className="max-h-64 overflow-y-auto space-y-2">
+                      {availableVoices.map((voice) => (
+                        <label
+                          key={voice.voiceId}
+                          className="flex items-start p-3 border rounded-lg cursor-pointer hover:bg-gray-50 transition"
+                        >
+                          <input
+                            type="radio"
+                            name="voice"
+                            value={voice.voiceId}
+                            checked={selectedVoiceId === voice.voiceId}
+                            onChange={() => setSelectedVoiceId(voice.voiceId)}
+                            className="mt-1 mr-3"
+                          />
+                          <div className="flex-1">
+                            <p className="font-medium">{voice.name}</p>
+                            <p className="text-sm text-gray-600">
+                              {voice.labels.gender && `${voice.labels.gender}`}
+                              {voice.labels.age && ` • ${voice.labels.age}`}
+                              {voice.labels.accent && ` • ${voice.labels.accent}`}
+                            </p>
+                            {voice.labels.description && (
+                              <p className="text-xs text-gray-500 mt-1">
+                                {voice.labels.description}
+                              </p>
+                            )}
+                          </div>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="flex gap-4">
+                    <button
+                      type="button"
+                      onClick={handleSkipVoice}
+                      className="px-6 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
+                    >
+                      Skip (No Voice)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleSaveVoice}
+                      disabled={!selectedVoiceId || loadingVoice}
+                      className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition disabled:opacity-50"
+                    >
+                      {loadingVoice ? 'Saving...' : 'Continue to Chat'}
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

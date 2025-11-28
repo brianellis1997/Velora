@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuthStore } from '@/lib/store/authStore';
-import { listCharacters } from '@/lib/api/characters';
+import { listCharacters, deleteCharacter } from '@/lib/api/characters';
 import { Character } from '@velora/shared';
 
 export default function DashboardPage() {
@@ -12,6 +12,7 @@ export default function DashboardPage() {
   const { user, accessToken, logout } = useAuthStore();
   const [characters, setCharacters] = useState<Character[]>([]);
   const [loading, setLoading] = useState(true);
+  const [deleting, setDeleting] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user || !accessToken) {
@@ -30,6 +31,23 @@ export default function DashboardPage() {
       console.error('Failed to load characters:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDelete = async (characterId: string, characterName: string) => {
+    if (!confirm(`Are you sure you want to delete ${characterName}? This cannot be undone.`)) {
+      return;
+    }
+
+    setDeleting(characterId);
+    try {
+      await deleteCharacter(characterId, accessToken!);
+      setCharacters(characters.filter(c => c.characterId !== characterId));
+    } catch (error) {
+      console.error('Failed to delete character:', error);
+      alert('Failed to delete character. Please try again.');
+    } finally {
+      setDeleting(null);
     }
   };
 
@@ -117,6 +135,14 @@ export default function DashboardPage() {
                   >
                     View
                   </Link>
+                  <button
+                    onClick={() => handleDelete(character.characterId, character.name)}
+                    disabled={deleting === character.characterId}
+                    className="px-4 py-2 border border-red-300 text-red-600 rounded-lg hover:bg-red-50 transition disabled:opacity-50"
+                    title="Delete character"
+                  >
+                    {deleting === character.characterId ? '...' : '🗑'}
+                  </button>
                 </div>
               </div>
             ))}
