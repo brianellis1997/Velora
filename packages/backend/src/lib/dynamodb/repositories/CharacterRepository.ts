@@ -10,6 +10,7 @@ export class CharacterRepository {
     systemPrompt: string;
     personalityTraits: PersonalityTraits;
     avatar?: string;
+    modelUrl?: string;
   }): Promise<Character> {
     const now = new Date().toISOString();
     const characterId = uuidv4();
@@ -21,6 +22,7 @@ export class CharacterRepository {
       systemPrompt: data.systemPrompt,
       personalityTraits: data.personalityTraits,
       avatar: data.avatar,
+      modelUrl: data.modelUrl,
       voiceConfig: undefined,
       isPublic: false,
       usageCount: 0,
@@ -88,7 +90,7 @@ export class CharacterRepository {
     const expressionAttributeValues: Record<string, any> = {};
 
     Object.entries(updates).forEach(([key, value], index) => {
-      if (key !== 'characterId' && key !== 'userId' && key !== 'createdAt') {
+      if (key !== 'characterId' && key !== 'userId' && key !== 'createdAt' && value !== undefined) {
         updateExpressions.push(`#${key} = :val${index}`);
         expressionAttributeNames[`#${key}`] = key;
         expressionAttributeValues[`:val${index}`] = value;

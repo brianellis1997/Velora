@@ -11,6 +11,7 @@ import { Character, Message, Conversation } from '@velora/shared';
 import { useAudioRecorder } from '@/lib/hooks/useAudioRecorder';
 import { useAudioPlayer } from '@/lib/hooks/useAudioPlayer';
 import { Avatar } from '@/components/Avatar';
+import { Avatar3D } from '@/components/Avatar3D';
 
 const WS_URL = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:3001';
 
@@ -319,12 +320,21 @@ export default function ChatPage() {
             >
               ☰
             </button>
-            <Avatar
-              src={character.avatar}
-              alt={character.name}
-              size="sm"
-              fallback={character.name[0]}
-            />
+            {character.modelUrl ? (
+              <Avatar3D
+                modelUrl={character.modelUrl}
+                fallbackSrc={character.avatar}
+                alt={character.name}
+                size="sm"
+              />
+            ) : (
+              <Avatar
+                src={character.avatar}
+                alt={character.name}
+                size="sm"
+                fallback={character.name[0]}
+              />
+            )}
             <div>
               <h1 className="text-xl font-bold">{character.name}</h1>
               <p className="text-sm text-gray-500">

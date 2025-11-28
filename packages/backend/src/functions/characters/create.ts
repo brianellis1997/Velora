@@ -4,6 +4,7 @@ import { CharacterRepository } from '../../lib/dynamodb/repositories/CharacterRe
 import { generateCharacterFromPrompt } from '../../lib/groq/client';
 import { generateCharacterImage } from '../../lib/images/xaiImageClient';
 import { uploadCharacterImage, getPresignedImageUrl } from '../../lib/s3/imageStorage';
+import { getAvatarModelUrl } from '../../lib/avatars/readyPlayerMe';
 import { successResponse, errorResponse } from '../../lib/utils/response';
 import { Logger } from '../../lib/utils/logger';
 import { ValidationError, UnauthorizedError, getErrorStatusCode } from '../../lib/utils/errors';
@@ -72,8 +73,13 @@ Instructions:
 
     if (generatedProfile) {
       try {
-        logger.info('Starting image generation process');
-        const imageBuffer = await generateCharacterImage(generatedProfile);
+        logger.info('Starting image and 3D model generation');
+
+        const [imageBuffer, modelUrl] = await Promise.all([
+          generateCharacterImage(generatedProfile),
+          getAvatarModelUrl(generatedProfile),
+        ]);
+
         logger.info('Image buffer generated', { sizeBytes: imageBuffer.length });
 
         logger.info('Uploading image to S3');
@@ -85,16 +91,21 @@ Instructions:
         logger.info('Presigned URL generated', { avatarUrl });
 
         character.avatar = avatarUrl;
+        character.modelUrl = modelUrl || undefined;
 
-        logger.info('Updating character with avatar URL');
-        await characterRepo.update(userId, character.characterId, { avatar: avatarUrl });
+        logger.info('Updating character with avatar and model URLs');
+        await characterRepo.update(userId, character.characterId, {
+          avatar: avatarUrl,
+          modelUrl: modelUrl || undefined,
+        });
 
-        logger.info('Image generated and uploaded successfully', {
+        logger.info('Image and 3D model generated successfully', {
           characterId: character.characterId,
-          avatarUrl
+          avatarUrl,
+          modelUrl,
         });
       } catch (imageError: any) {
-        logger.error('Failed to generate image, continuing without avatar', {
+        logger.error('Failed to generate image/model, continuing without avatar', {
           error: imageError.message,
           stack: imageError.stack,
           characterId: character.characterId,

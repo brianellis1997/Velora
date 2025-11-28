@@ -27,6 +27,7 @@ export const CharacterSchema = z.object({
   userId: z.string().uuid(),
   name: z.string().min(1).max(50),
   avatar: z.string().url().optional(),
+  modelUrl: z.string().url().optional(),
   systemPrompt: z.string(),
   personalityTraits: PersonalityTraitsSchema,
   voiceConfig: VoiceConfigSchema,
@@ -49,6 +50,7 @@ export type CreateCharacterInput = z.infer<typeof CreateCharacterInputSchema>;
 export interface UpdateCharacterInput {
   name?: string;
   avatar?: string;
+  modelUrl?: string;
   systemPrompt?: string;
   personalityTraits?: Partial<PersonalityTraits>;
   isPublic?: boolean;
