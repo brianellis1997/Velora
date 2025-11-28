@@ -12,6 +12,7 @@ interface ApiStackProps extends cdk.StackProps {
   userPoolClient: cognito.UserPoolClient;
   functions: {
     register: lambda.Function;
+    confirm: lambda.Function;
     login: lambda.Function;
     getProfile: lambda.Function;
     createCharacter: lambda.Function;
@@ -62,6 +63,12 @@ export class ApiStack extends cdk.Stack {
       path: '/auth/register',
       methods: [apigatewayv2.HttpMethod.POST],
       integration: new apigatewayv2Integrations.HttpLambdaIntegration('RegisterIntegration', functions.register),
+    });
+
+    httpApi.addRoutes({
+      path: '/auth/confirm',
+      methods: [apigatewayv2.HttpMethod.POST],
+      integration: new apigatewayv2Integrations.HttpLambdaIntegration('ConfirmIntegration', functions.confirm),
     });
 
     httpApi.addRoutes({

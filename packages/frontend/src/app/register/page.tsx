@@ -22,7 +22,7 @@ export default function RegisterPage() {
 
     try {
       await register(formData);
-      router.push('/login?registered=true');
+      router.push(`/confirm?username=${encodeURIComponent(formData.username)}`);
     } catch (err: any) {
       setError(err.message || 'Registration failed');
     } finally {

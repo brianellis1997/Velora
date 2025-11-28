@@ -27,8 +27,20 @@ export interface AuthResponse {
   message?: string;
 }
 
+export interface ConfirmSignUpInput {
+  username: string;
+  code: string;
+}
+
 export async function register(input: RegisterInput): Promise<AuthResponse> {
   return apiRequest('/auth/register', {
+    method: 'POST',
+    body: input,
+  });
+}
+
+export async function confirmSignUp(input: ConfirmSignUpInput): Promise<{ message: string }> {
+  return apiRequest('/auth/confirm', {
     method: 'POST',
     body: input,
   });

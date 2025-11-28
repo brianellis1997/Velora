@@ -22,6 +22,7 @@ interface FunctionStackProps extends cdk.StackProps {
 export class FunctionStack extends cdk.Stack {
   public readonly functions: {
     register: lambda.Function;
+    confirm: lambda.Function;
     login: lambda.Function;
     getProfile: lambda.Function;
     createCharacter: lambda.Function;
@@ -74,6 +75,17 @@ export class FunctionStack extends cdk.Stack {
       handler: 'handler',
       entry: path.join(lambdaPath, 'auth/register.ts'),
       functionName: 'velora-register',
+      timeout: cdk.Duration.seconds(10),
+      memorySize: 512,
+      environment: commonEnvironment,
+      bundling: commonBundling,
+    });
+
+    const confirmFunction = new lambdaNodejs.NodejsFunction(this, 'ConfirmFunction', {
+      runtime: lambda.Runtime.NODEJS_20_X,
+      handler: 'handler',
+      entry: path.join(lambdaPath, 'auth/confirm.ts'),
+      functionName: 'velora-confirm',
       timeout: cdk.Duration.seconds(10),
       memorySize: 512,
       environment: commonEnvironment,
@@ -223,12 +235,13 @@ export class FunctionStack extends cdk.Stack {
       bundling: commonBundling,
     });
 
-    [registerFunction, loginFunction].forEach(fn => {
+    [registerFunction, confirmFunction, loginFunction].forEach(fn => {
       userPool.grant(fn, 'cognito-idp:AdminInitiateAuth', 'cognito-idp:AdminCreateUser', 'cognito-idp:AdminSetUserPassword');
     });
 
     const allFunctions = [
       registerFunction,
+      confirmFunction,
       loginFunction,
       getProfileFunction,
       createCharacterFunction,
@@ -270,6 +283,7 @@ export class FunctionStack extends cdk.Stack {
 
     this.functions = {
       register: registerFunction,
+      confirm: confirmFunction,
       login: loginFunction,
       getProfile: getProfileFunction,
       createCharacter: createCharacterFunction,

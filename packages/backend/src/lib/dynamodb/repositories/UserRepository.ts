@@ -93,6 +93,25 @@ export class UserRepository {
     return user as User;
   }
 
+  async getByUsername(username: string): Promise<User | null> {
+    const result = await docClient.send(
+      new QueryCommand({
+        TableName: TABLE_NAMES.USERS,
+        IndexName: 'GSI2',
+        KeyConditionExpression: 'username = :username',
+        ExpressionAttributeValues: {
+          ':username': username,
+        },
+        Limit: 1,
+      })
+    );
+
+    if (!result.Items || result.Items.length === 0) return null;
+
+    const { PK, SK, ...user } = result.Items[0];
+    return user as User;
+  }
+
   async update(userId: string, updates: Partial<User>): Promise<User> {
     const updateExpressions: string[] = [];
     const expressionAttributeNames: Record<string, string> = {};

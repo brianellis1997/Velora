@@ -10,6 +10,7 @@ export default function LoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const registered = searchParams.get('registered');
+  const confirmed = searchParams.get('confirmed');
 
   const { setUser, setTokens } = useAuthStore();
   const [formData, setFormData] = useState({
@@ -46,6 +47,12 @@ export default function LoginPage() {
         {registered && (
           <div className="mb-4 p-3 bg-green-100 border border-green-400 text-green-700 rounded">
             Account created! Please login.
+          </div>
+        )}
+
+        {confirmed && (
+          <div className="mb-4 p-3 bg-green-100 border border-green-400 text-green-700 rounded">
+            Email confirmed! You can now login.
           </div>
         )}
 

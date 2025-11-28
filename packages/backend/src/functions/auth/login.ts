@@ -45,8 +45,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
     let user = username.includes('@') ? await userRepo.getByEmail(username) : null;
     if (!user) {
       // If not found by email or input wasn't an email, search by username
-      const allUsers = await userRepo.list();
-      user = allUsers.find(u => u.username === username) || null;
+      user = await userRepo.getByUsername(username);
     }
 
     if (!user) {
