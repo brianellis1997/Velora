@@ -10,6 +10,7 @@ import { getProfile } from '@/lib/api/users';
 import { Character, Message, Conversation } from '@velora/shared';
 import { useAudioRecorder } from '@/lib/hooks/useAudioRecorder';
 import { useAudioPlayer } from '@/lib/hooks/useAudioPlayer';
+import { Avatar } from '@/components/Avatar';
 
 const WS_URL = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:3001';
 
@@ -318,6 +319,12 @@ export default function ChatPage() {
             >
               ☰
             </button>
+            <Avatar
+              src={character.avatar}
+              alt={character.name}
+              size="sm"
+              fallback={character.name[0]}
+            />
             <div>
               <h1 className="text-xl font-bold">{character.name}</h1>
               <p className="text-sm text-gray-500">
@@ -384,6 +391,14 @@ export default function ChatPage() {
               }`}
             >
               <div className="flex items-end gap-2">
+                {message.role === 'assistant' && (
+                  <Avatar
+                    src={character?.avatar}
+                    alt={character?.name || 'Character'}
+                    size="sm"
+                    fallback={character?.name?.[0]}
+                  />
+                )}
                 {message.role === 'assistant' && voiceEnabled && character?.voiceConfig && (
                   <button
                     onClick={() => handlePlayAudio(index, message.content)}
@@ -413,9 +428,17 @@ export default function ChatPage() {
 
           {streamingMessage && (
             <div className="flex justify-start">
-              <div className="max-w-xs lg:max-w-md px-4 py-2 rounded-lg bg-white text-gray-900 shadow">
-                {streamingMessage}
-                <span className="animate-pulse">▊</span>
+              <div className="flex items-end gap-2">
+                <Avatar
+                  src={character?.avatar}
+                  alt={character?.name || 'Character'}
+                  size="sm"
+                  fallback={character?.name?.[0]}
+                />
+                <div className="max-w-xs lg:max-w-md px-4 py-2 rounded-lg bg-white text-gray-900 shadow">
+                  {streamingMessage}
+                  <span className="animate-pulse">▊</span>
+                </div>
               </div>
             </div>
           )}
