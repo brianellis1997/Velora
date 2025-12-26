@@ -56,7 +56,7 @@ export async function streamChatCompletion(
   const xai = await getXaiClient();
 
   const stream = await xai.chat.completions.create({
-    model: 'grok-2-1212',
+    model: 'grok-3',
     messages: messages as any,
     stream: true,
     temperature: 0.9,
@@ -77,7 +77,7 @@ export async function streamChatCompletion(
   return {
     content: fullContent,
     tokens: fullContent.split(/\s+/).length * 1.3,
-    model: 'grok-2-1212',
+    model: 'grok-3',
   };
 }
 
@@ -95,7 +95,7 @@ export async function generateCharacterFromPrompt(prompt: string): Promise<Gener
 }`;
 
   const response = await xai.chat.completions.create({
-    model: 'grok-2-1212',
+    model: 'grok-3',
     messages: [
       { role: 'system', content: systemPrompt },
       { role: 'user', content: `Create a character based on this description: ${prompt}` },

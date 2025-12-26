@@ -80,7 +80,7 @@ export async function generateCharacterImage(
     });
 
     const response = await xai.images.generate({
-      model: 'grok-2-image-1212',
+      model: 'grok-2-image',
       prompt: imagePrompt,
       n: 1,
       response_format: 'b64_json',
